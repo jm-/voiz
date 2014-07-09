@@ -7,6 +7,8 @@ __status__ = 'prototype'
 import logging
 from argparse import ArgumentParser
 
+from voiz.app import VoiZ
+
 LOG_FMT         = '%(asctime)s %(name)-15s %(levelname)-7s %(message)s'
 LOG_DATEFMT     = '%y-%m-%d %H:%M:%S'
 
