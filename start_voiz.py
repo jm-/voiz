@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#!/usr/bin/env python
 
 __author__ = 'Julian Melchert <jpm28@students.waikato.ac.nz>'
 __version__ = '1.0.1'
@@ -26,7 +26,7 @@ def loadConfig():
         default='default'
     )
     parser.add_argument(
-        '-speakerdev',
+        '-outdev',
         type=str,
         help='ALSA card/device to use for voice playback',
         default='default'
@@ -37,7 +37,6 @@ if __name__ == '__main__':
     setupLogging()
 
     # load run configuration
-    logging.debug('Loading configuration')
     conf = loadConfig()
 
 
