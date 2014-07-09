@@ -8,21 +8,31 @@ from gnuradio import gr
 from gnuradio.filter import firdes
 from grc_gnuradio import blks2 as grc_blks2
 
+SAMPLE_RATE = 48000
+PAYLOAD_LEN = 64
+
 class tx_block(gr.top_block):
 
-    def __init__(self):
+    def __init__(   self,
+                    carrier,
+                    sideband,
+                    transition,
+                    sps,
+                    interpolation,
+                    looutdev):
+
         gr.top_block.__init__(self, "Transmit block")
 
         ##################################################
         # Variables
         ##################################################
-        self.transistion = transistion = 250
-        self.sps = sps = 2
-        self.sideband = sideband = 2300
-        self.samp_rate = samp_rate = 48000
-        self.payloadlen = payloadlen = 25
-        self.interpolation = interpolation = 8
-        self.carrier_tx = carrier_tx = 2400
+        self.samp_rate = SAMPLE_RATE
+
+        self.carrier = carrier
+        self.sideband = sideband
+        self.transition = transition
+        self.sps = sps
+        self.interpolation = interpolation
 
         ##################################################
         # Blocks
@@ -33,7 +43,7 @@ class tx_block(gr.top_block):
                 taps=None,
                 fractional_bw=None,
         )
-        self.freq_xlating_fir_filter_xxx_0 = filter.freq_xlating_fir_filter_ccc(1, (firdes.band_pass (0.50,samp_rate,carrier_tx-sideband,carrier_tx+sideband,transistion)), -carrier_tx, samp_rate)
+        self.freq_xlating_fir_filter_xxx_0 = filter.freq_xlating_fir_filter_ccc(1, (firdes.band_pass (0.50,SAMPLE_RATE,carrier-sideband,carrier+sideband,transition)), -carrier, SAMPLE_RATE)
         self.digital_gfsk_mod_0 = digital.gfsk_mod(
             samples_per_symbol=sps,
             sensitivity=1.0,
@@ -49,9 +59,9 @@ class tx_block(gr.top_block):
                 access_code="",
                 pad_for_usrp=False,
             ),
-            payload_length=payloadlen,
+            payload_length=PAYLOAD_LEN,
         )
-        self.audio_sink_0 = audio.sink(samp_rate, "plughw:1,1,0", True)
+        self.audio_sink_0 = audio.sink(SAMPLE_RATE, looutdev, True)
 
         self.source_queue = gr.msg_queue()
         self.msg_source = blocks.message_source(gr.sizeof_char, self.source_queue)

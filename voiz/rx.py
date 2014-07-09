@@ -8,20 +8,30 @@ from gnuradio import gr
 from gnuradio.filter import firdes
 from grc_gnuradio import blks2 as grc_blks2
 
+SAMPLE_RATE = 48000
+
 class rx_block(gr.top_block):
 
-    def __init__(self):
+    def __init__(   self,
+                    carrier,
+                    sideband,
+                    transition,
+                    sps,
+                    interpolation,
+                    lomicdev):
+
         gr.top_block.__init__(self, "Receive block")
 
         ##################################################
         # Variables
         ##################################################
-        self.transition = transition = 250
-        self.sps = sps = 2
-        self.sideband_rx = sideband_rx = 2300
-        self.samp_rate = samp_rate = 48000
-        self.interpolation = interpolation = 8
-        self.carrier_rx = carrier_rx = 2400
+        self.samp_rate = SAMPLE_RATE
+
+        self.carrier = carrier
+        self.sideband = sideband
+        self.transition = transition
+        self.sps = sps
+        self.interpolation = interpolation
 
         ##################################################
         # Blocks
@@ -32,7 +42,7 @@ class rx_block(gr.top_block):
                 taps=None,
                 fractional_bw=None,
         )
-        self.freq_xlating_fir_filter_xxx_0_0 = filter.freq_xlating_fir_filter_ccc(1, (firdes.low_pass(1, samp_rate, sideband_rx,transition)), carrier_rx, samp_rate)
+        self.freq_xlating_fir_filter_xxx_0_0 = filter.freq_xlating_fir_filter_ccc(1, (firdes.low_pass(1,SAMPLE_RATE,sideband,transition)), carrier, SAMPLE_RATE)
         self.digital_gfsk_demod_0 = digital.gfsk_demod(
             samples_per_symbol=sps,
             sensitivity=1.0,
@@ -50,9 +60,9 @@ class rx_block(gr.top_block):
                 callback=lambda ok, payload: self.blks2_packet_decoder_0.recv_pkt(ok, payload),
             ),
         )
-        self.audio_source_0 = audio.source(samp_rate, "plughw:1,1,0", True)
+        self.audio_source_0 = audio.source(SAMPLE_RATE, lomicdev, True)
 
-        self.fft_filter_xxx_1 = filter.fft_filter_ccc(1, (firdes.complex_band_pass_2(1.0,samp_rate,carrier_rx-sideband_rx,carrier_rx+sideband_rx,transition,100,firdes.WIN_HAMMING,6.76)), 1)
+        self.fft_filter_xxx_1 = filter.fft_filter_ccc(1, (firdes.complex_band_pass_2(1.0,SAMPLE_RATE,carrier-sideband,carrier+sideband,transition,100,firdes.WIN_HAMMING,6.76)), 1)
         self.fft_filter_xxx_1.declare_sample_delay(0)
 
         self.sink_queue = gr.msg_queue()
