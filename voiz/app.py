@@ -12,6 +12,7 @@ class VoiZApp():
         self.logger = getLogger('VoiZ-app')
         self.conf = conf
         self.cache = VoiZCache()
+        self.logger.info('Using ZID = 0x%s', self.cache.getZID().encode('hex'))
 
     def _initiate(self):
         pass

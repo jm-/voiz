@@ -31,8 +31,11 @@ class VoiZCache():
             self.cache = pickleLoad(fp)
 
     def save(self):
-        with open(self.path, 'rb') as fp:
+        with open(self.path, 'wb') as fp:
             pickleDump(self.cache, fp)
+
+    def getZID(self):
+        return self.cache['ZID']
 
 class VoiZMAC():
 
