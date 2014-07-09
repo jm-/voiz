@@ -8,7 +8,7 @@ from gnuradio import gr
 from gnuradio.filter import firdes
 from grc_gnuradio import blks2 as grc_blks2
 
-class top_block(gr.top_block):
+class rx_block(gr.top_block):
 
     def __init__(self):
         gr.top_block.__init__(self, "Receive block")
@@ -44,8 +44,6 @@ class top_block(gr.top_block):
             log=False,
         )
         self.blocks_float_to_complex_0 = blocks.float_to_complex(1)
-        self.blocks_file_sink_1 = blocks.file_sink(gr.sizeof_char*1, "/media/salver/University/Honours/conf.example.output", False)
-        self.blocks_file_sink_1.set_unbuffered(False)
         self.blks2_packet_decoder_0 = grc_blks2.packet_demod_b(grc_blks2.packet_decoder(
                 access_code="",
                 threshold=-1,
@@ -64,7 +62,6 @@ class top_block(gr.top_block):
         # Connections
         ##################################################
         self.connect((self.blks2_packet_decoder_0, 0), (self.msg_sink, 0))
-        self.connect((self.blks2_packet_decoder_0, 0), (self.blocks_file_sink_1, 0))
         self.connect((self.freq_xlating_fir_filter_xxx_0_0, 0), (self.rational_resampler_xxx_0_0_0, 0))
         self.connect((self.digital_gfsk_demod_0, 0), (self.blks2_packet_decoder_0, 0))
         self.connect((self.audio_source_0, 0), (self.blocks_float_to_complex_0, 0))
