@@ -23,4 +23,4 @@ class VoiZPacketFactory():
 
     def gen_pkt_hello(self):
         payload = self.gen_pkt_payload_hello()
-        return payload + self.mac.hmac_h2(payload)
+        return payload + self.mac.hmac_h2(payload)[:8]
