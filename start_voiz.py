@@ -85,6 +85,11 @@ def loadConfig():
         help='act as the initiator',
         action='store_true'
     )
+    parser.add_argument(
+        '--listen',
+        help='[debug] listen to received audio',
+        action='store_true'
+    )
     return parser.parse_args()
 
 if __name__ == '__main__':

@@ -3,6 +3,7 @@
 from logging import getLogger
 from time import sleep, time as now
 
+from .c2 import Codec2Source
 from .tx import tx_block, PAYLOAD_LEN
 from .rx import rx_block
 from .crypto import VoiZCache, VoiZMAC
@@ -23,6 +24,13 @@ class VoiZApp():
         # instantiate packet factory
         self.pkt_factory = VoiZPacketFactory(self.cache, self.mac)
 
+    def send(self, send_pkt, count=1):
+        send_pkt = send_pkt.ljust(PAYLOAD_LEN, ZERO)
+        while count > 0:
+            self.tx.send_pkt(send_pkt)
+            sleep(DELAY)
+            count -= 1
+
     def send_until_pkt(self, send_pkts, recv_pkt_id, wait_forever=False):
         send_pkts = [pkt.ljust(PAYLOAD_LEN, ZERO) for pkt in send_pkts]
         attempts = len(send_pkts) * TIMEOUT / DELAY
@@ -31,8 +39,8 @@ class VoiZApp():
                 self.tx.send_pkt(send_pkt)
                 # look for received packet
                 recv_pkt = self.rx.recv_pkt()
-                if recv_pkt:
-                    print len(recv_pkt), repr(recv_pkt)
+                #if recv_pkt:
+                #    print len(recv_pkt), repr(recv_pkt)
                 if recv_pkt and ord(recv_pkt[0]) == recv_pkt_id:
                     return recv_pkt
                 sleep(DELAY)
@@ -42,8 +50,8 @@ class VoiZApp():
         attempts = TIMEOUT / DELAY
         while wait_forever or attempts > 0:
             recv_pkt = self.rx.recv_pkt()
-            if recv_pkt:
-                print len(recv_pkt), repr(recv_pkt)
+            #if recv_pkt:
+            #    print len(recv_pkt), repr(recv_pkt)
             if recv_pkt and ord(recv_pkt[0]) == recv_pkt_id:
                 return recv_pkt
             sleep(DELAY)
@@ -101,7 +109,7 @@ class VoiZApp():
             pvr,
             dhpart1mac
         ) = self.pkt_factory.dct_pkts_dhpart1(
-            rdhpart11_pkt +
+            rdhpart11_pkt[:64] +
             rdhpart12_pkt[1:64] +
             rdhpart13_pkt[1:64] +
             rdhpart14_pkt[1:64] +
@@ -117,30 +125,57 @@ class VoiZApp():
             self.logger.error('Hash chain verification failed: sha256(h2) != h3')
             return False
 
-
         dhpart2_pkts = self.pkt_factory.gen_pkts_dhpart2()
+        # prepare dhpart2 packets
+        self.logger.debug('Sending packets for DH-part2')
+        rconfirm1_pkt = self.send_until_pkt(dhpart2_pkts, PKT_CONFIRM1)
+        if not rconfirm1_pkt:
+            self.logger.warning('Timeout reached')
+            return False
+        self.logger.debug('Received packet: PKT_CONFIRM1')
+        # dissect fields
+        (   rconfirm_mac,
+            rh0_enc
+        ) = self.pkt_factory.dct_pkt_confirm1(rconfirm1_pkt)
 
         # set parameters
         self.mac.setPartnerPublicKey(pvr)
         self.mac.setPackets(
             rhello_pkt[:53] +
             icommit_pkt +
-            rdhpart11_pkt +
-            rdhpart12_pkt +
-            rdhpart13_pkt +
-            rdhpart14_pkt +
+            rdhpart11_pkt[:64] +
+            rdhpart12_pkt[:64] +
+            rdhpart13_pkt[:64] +
+            rdhpart14_pkt[:64] +
             rdhpart15_pkt[:61] +
             ''.join(dhpart2_pkts)
         )
         self.mac.computeSecret(self.cache.getZID(), rzid)
+        # determine keys
+        self.mac.startEncryption(
+            self.mac.hmac_s0('Initiator ZRTP key'),
+            self.mac.hmac_s0('Responder ZRTP key')
+        )
 
-        # prepare dhpart2 packets
-        self.logger.debug('Sending packets for DH-part2')
-        iconfirm1_pkt = self.send_until_pkt(dhpart2_pkts, PKT_CONFIRM1)
+        # verify confirm1 packet
+        rconfirmmackey = self.mac.hmac_s0('Responder HMAC key')
+        if not self.mac.verifyPacketHMAC(rconfirmmackey, rh0_enc, rconfirm_mac):
+            self.logger.error('HMAC failed in responders CONFIRM1 packet')
+            return False
+        # decrypt rh0
+        rh0 = self.mac.decrypt(rh0_enc)
+        self.logger.debug('Responders h0: 0x%s', rh0.encode('hex'))
+        # verify DHPART1 packet mac
+        if not self.mac.verifyHash(rh0, rh1):
+            self.logger.error('Hash chain verification failed: sha256(h0) != h1')
+            return False
 
+        # prepare dhconfirm2 packet
+        iconfirm2_pkt = self.pkt_factory.gen_pkt_confirm2()
+        self.logger.debug('Sending packets for CONFIRM2')
+        self.send(iconfirm2_pkt, 10)
 
-
-
+        return True
 
     def _respond(self):
         self.logger.debug('Starting response procedure...')
@@ -219,7 +254,7 @@ class VoiZApp():
             pvi,
             dhpart2mac
         ) = self.pkt_factory.dct_pkts_dhpart1(
-            idhpart21_pkt +
+            idhpart21_pkt[:64] +
             idhpart22_pkt[1:64] +
             idhpart23_pkt[1:64] +
             idhpart24_pkt[1:64] +
@@ -233,19 +268,63 @@ class VoiZApp():
         if not self.mac.verifyHash(ih1, ih2):
             self.logger.error('Hash chain verification failed: sha256(h1) != h2')
             return False
+
         # set parameters
         self.mac.setPartnerPublicKey(pvi)
         self.mac.setPackets(
             rhello_pkt +
             icommit_pkt[:61] +
             ''.join(dhpart1_pkts) +
-            idhpart21_pkt +
-            idhpart22_pkt +
-            idhpart23_pkt +
-            idhpart24_pkt +
+            idhpart21_pkt[:64] +
+            idhpart22_pkt[:64] +
+            idhpart23_pkt[:64] +
+            idhpart24_pkt[:64] +
             idhpart25_pkt[:61]
         )
         self.mac.computeSecret(izid, self.cache.getZID())
+        # determine keys
+        self.mac.startEncryption(
+            self.mac.hmac_s0('Responder ZRTP key'),
+            self.mac.hmac_s0('Initiator ZRTP key')
+        )
+
+        # wait for confirm2
+        rconfirm1_pkt = self.pkt_factory.gen_pkt_confirm1()
+        self.logger.debug('Sending packet: PKT_CONFIRM1')
+        iconfirm2_pkt = self.send_until_pkt([rconfirm1_pkt], PKT_CONFIRM2)
+        if not iconfirm2_pkt:
+            self.logger.warning('Timeout reached')
+            return False
+        self.logger.debug('Received packet: PKT_CONFIRM2')
+        # dissect fields
+        (   iconfirm_mac,
+            ih0_enc
+        ) = self.pkt_factory.dct_pkt_confirm1(iconfirm2_pkt)
+
+        # verify confirm2 packet
+        iconfirmmackey = self.mac.hmac_s0('Initiator HMAC key')
+        if not self.mac.verifyPacketHMAC(iconfirmmackey, ih0_enc, iconfirm_mac):
+            self.logger.error('HMAC failed in initiators CONFIRM2 packet')
+            return False
+        # decrypt ih0
+        ih0 = self.mac.decrypt(ih0_enc)
+        self.logger.debug('Initiators h0: 0x%s', ih0.encode('hex'))
+        # verify DHPART2 packet mac
+        if not self.mac.verifyHash(ih0, ih1):
+            self.logger.error('Hash chain verification failed: sha256(h0) != h1')
+            return False
+
+        return True
+
+    def relayAudio(self):
+        with Codec2Source(self.conf.micdev) as voice_src:
+            src_samples = ''
+            for c2sample in voice_src.read():
+                if c2sample:
+                    src_samples += c2sample
+                    if len(src_samples) >= 63:
+                        self.send(self.pkt_factory.gen_pkt_codec2(src_samples[:63]))
+                        src_samples = src_samples[63:]
 
     def run(self):
         # setup tx and rx classes
@@ -265,7 +344,8 @@ class VoiZApp():
             self.conf.transition,
             self.conf.sps,
             self.conf.interpolation,
-            self.conf.lomicdev
+            self.conf.lomicdev,
+            self.conf.listen
         )
 
         self.rx.start()
@@ -278,7 +358,8 @@ class VoiZApp():
             proceed = self._respond()
 
         if proceed:
-            pass
+            self.logger.info('Authentication successful, starting voice relay...')
+            self.relayAudio()
 
         self.tx.stop()
         self.rx.stop()

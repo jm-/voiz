@@ -19,6 +19,11 @@ PKT_DHPART25    = 0x0c
 PKT_DHPART2     = 0x0d
 PKT_CONFIRM1    = 0x0e
 PKT_CONFIRM2    = 0x0f
+PKT_CODEC2      = 0x10
+
+ULONG_PACK = Struct('!Q').pack
+
+PKT_CODEC2_CHR = chr(PKT_CODEC2)
 
 class VoiZPacketFactory():
 
@@ -74,3 +79,23 @@ class VoiZPacketFactory():
 
     def dct_pkts_dhpart1(self, pkt):
         return pkt[1:33], pkt[33:41], pkt[41:49], pkt[49:305], pkt[305:313]
+
+    def gen_pkt_confirm1(self):
+        # encrypt h0
+        enc_h0 = self.mac.encrypt(self.mac.h0)
+        confirmmackey = self.mac.hmac_s0('Responder HMAC key')
+        confirmmac = self.mac.getHMAC(confirmmackey, enc_h0)
+        return chr(PKT_CONFIRM1) + confirmmac[:8] + enc_h0
+
+    def gen_pkt_confirm2(self):
+        # encrypt h0
+        enc_h0 = self.mac.encrypt(self.mac.h0)
+        confirmmackey = self.mac.hmac_s0('Initiator HMAC key')
+        confirmmac = self.mac.getHMAC(confirmmackey, enc_h0)
+        return chr(PKT_CONFIRM2) + confirmmac[:8] + enc_h0
+
+    def dct_pkt_confirm1(self, pkt):
+        return pkt[1:9], pkt[9:41]
+
+    def gen_pkt_codec2(self, payload):
+        return PKT_CODEC2_CHR + ULONG_PACK(self.mac.encctr) + self.mac.encrypt(PKT_CODEC2_CHR + payload)

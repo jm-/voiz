@@ -9,7 +9,7 @@ from gnuradio.filter import firdes
 from grc_gnuradio import blks2 as grc_blks2
 
 SAMPLE_RATE = 48000
-PAYLOAD_LEN = 64
+PAYLOAD_LEN = 73
 
 class tx_block(gr.top_block):
 

@@ -18,7 +18,8 @@ class rx_block(gr.top_block):
                     transition,
                     sps,
                     interpolation,
-                    lomicdev):
+                    lomicdev,
+                    listen=False):
 
         gr.top_block.__init__(self, "Receive block")
 
@@ -62,6 +63,9 @@ class rx_block(gr.top_block):
         )
         self.audio_source_0 = audio.source(SAMPLE_RATE, lomicdev, True)
 
+        if listen:
+            self.audio_sink_0_tmp = audio.sink(SAMPLE_RATE, 'plughw:0,0', True)
+
         self.fft_filter_xxx_1 = filter.fft_filter_ccc(1, (firdes.complex_band_pass_2(1.0,SAMPLE_RATE,carrier-sideband,carrier+sideband,transition,100,firdes.WIN_HAMMING,6.76)), 1)
         self.fft_filter_xxx_1.declare_sample_delay(0)
 
@@ -78,6 +82,10 @@ class rx_block(gr.top_block):
         self.connect((self.blocks_float_to_complex_0, 0), (self.fft_filter_xxx_1, 0))
         self.connect((self.fft_filter_xxx_1, 0), (self.freq_xlating_fir_filter_xxx_0_0, 0))
         self.connect((self.rational_resampler_xxx_0_0_0, 0), (self.digital_gfsk_demod_0, 0))
+
+        # sound playback
+        if listen:
+            self.connect((self.audio_source_0, 0), (self.audio_sink_0_tmp, 0))
 
     def recv_pkt(self):
         if self.sink_queue.count() > 0:

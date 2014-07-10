@@ -9,6 +9,8 @@ from logging import getLogger
 
 from Crypto import Random
 from Crypto.Hash import SHA256, HMAC
+from Crypto.Util import Counter
+from Crypto.Cipher import AES
 
 VOIZ_CACHE_PATH = '~/.voiz_cache'
 
@@ -75,14 +77,20 @@ class VoiZMAC():
         self.dhpriv = int(self.prng.read(2047).encode('hex'), 16)
         self.dhpub = pow(DH_GENERATOR, self.dhpriv, DH_MODULUS)
 
+    def getHMAC(self, key, payload):
+        return HMAC.new(key, payload, SHA256).digest()
+
     def hmac_h2(self, payload):
-        return HMAC.new(self.h2, payload, SHA256).digest()
+        return self.getHMAC(self.h2, payload)
 
     def hmac_h1(self, payload):
-        return HMAC.new(self.h1, payload, SHA256).digest()
+        return self.getHMAC(self.h1, payload)
 
     def hmac_h0(self, payload):
-        return HMAC.new(self.h0, payload, SHA256).digest()
+        return self.getHMAC(self.h0, payload)
+
+    def hmac_s0(self, payload):
+        return self.getHMAC(self.s0, payload)
 
     def generateCounterSuffix(self):
         self.counter_suffix = self.prng.read(8)
@@ -118,3 +126,24 @@ class VoiZMAC():
 
     def getHash(self, payload):
         return SHA256.new(payload).digest()
+
+    def startEncryption(self, enckey, deckey):
+        self.enckey = enckey
+        self.deckey = deckey
+        # encryption
+        encctro = Counter.new(64, suffix=self.counter_suffix)
+        self.enccipher = AES.new(enckey, AES.MODE_CTR, counter=encctro)
+        # decryption
+        decctro = Counter.new(64, suffix=self.counter_suffix)
+        self.deccipher = AES.new(deckey, AES.MODE_CTR, counter=decctro)
+        # counters
+        self.encctr = 1
+        self.decctr = 1
+
+    def encrypt(self, payload):
+        self.encctr += len(payload) / 16
+        return self.enccipher.encrypt(payload)
+
+    def decrypt(self, payload):
+        self.decctr += len(payload) / 16
+        return self.deccipher.decrypt(payload)
