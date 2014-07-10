@@ -3,7 +3,7 @@
 from logging import getLogger
 from time import sleep, time as now
 
-from .c2 import Codec2Source
+from .c2 import Codec2Source, Codec2Sink
 from .tx import tx_block, PAYLOAD_LEN
 from .rx import rx_block
 from .crypto import VoiZCache, VoiZMAC
@@ -318,13 +318,20 @@ class VoiZApp():
 
     def relayAudio(self):
         with Codec2Source(self.conf.micdev) as voice_src:
-            src_samples = ''
-            for c2sample in voice_src.read():
-                if c2sample:
-                    src_samples += c2sample
-                    if len(src_samples) >= 63:
-                        self.send(self.pkt_factory.gen_pkt_codec2(src_samples[:63]))
-                        src_samples = src_samples[63:]
+            with Codec2Sink(self.conf.outdev) as voice_sink:
+                src_samples = ''
+                for c2sample in voice_src.read():
+                    # send mic input
+                    if c2sample:
+                        src_samples += c2sample
+                        if len(src_samples) >= 63:
+                            self.send(self.pkt_factory.gen_pkt_codec2(src_samples[:63]))
+                            src_samples = src_samples[63:]
+                    # check for received audio
+                    recv_pkt = self.rx.recv_pkt()
+                    if recv_pkt and recv_pkt[0] == PKT_CODEC2_CHR:
+                        c2data = self.pkt_factory.dct_pkt_codec2(recv_pkt)
+                        voice_sink.write(c2data)
 
     def run(self):
         # setup tx and rx classes

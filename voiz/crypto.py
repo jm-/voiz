@@ -144,6 +144,11 @@ class VoiZMAC():
         self.encctr += len(payload) / 16
         return self.enccipher.encrypt(payload)
 
-    def decrypt(self, payload):
+    def decrypt(self, payload, ctr=None):
+        ctr = ctr or self.decctr
+        if ctr != self.decctr:
+            decctro = Counter.new(64, suffix=self.counter_suffix, initial_value=ctr)
+            self.deccipher = AES.new(self.deckey, AES.MODE_CTR, counter=decctro)
+            self.decctr = ctr
         self.decctr += len(payload) / 16
         return self.deccipher.decrypt(payload)

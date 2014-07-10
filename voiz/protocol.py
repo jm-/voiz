@@ -22,6 +22,7 @@ PKT_CONFIRM2    = 0x0f
 PKT_CODEC2      = 0x10
 
 ULONG_PACK = Struct('!Q').pack
+ULONG_UNPACK = Struct('!Q').unpack
 
 PKT_CODEC2_CHR = chr(PKT_CODEC2)
 
@@ -99,3 +100,7 @@ class VoiZPacketFactory():
 
     def gen_pkt_codec2(self, payload):
         return PKT_CODEC2_CHR + ULONG_PACK(self.mac.encctr) + self.mac.encrypt(PKT_CODEC2_CHR + payload)
+
+    def dct_pkt_codec2(self, pkt):
+        ctr = ULONG_UNPACK(pkt[1:9])[0]
+        return self.mac.decrypt(pkt[9:73], ctr)[1:64]
