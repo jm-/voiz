@@ -39,10 +39,11 @@ class VoiZApp():
                 self.tx.send_pkt(send_pkt)
                 # look for received packet
                 recv_pkt = self.rx.recv_pkt()
-                #if recv_pkt:
-                #    print len(recv_pkt), repr(recv_pkt)
-                if recv_pkt and ord(recv_pkt[0]) == recv_pkt_id:
-                    return recv_pkt
+                if recv_pkt:
+                    pkt_id = ord(recv_pkt[0])
+                    if pkt_id == recv_pkt_id:
+                        return recv_pkt
+                    self.logger.debug('Received unanticipated packet: 0x%s', pkt_id)
                 sleep(DELAY)
                 attempts -= 1
 
@@ -50,10 +51,11 @@ class VoiZApp():
         attempts = TIMEOUT / DELAY
         while wait_forever or attempts > 0:
             recv_pkt = self.rx.recv_pkt()
-            #if recv_pkt:
-            #    print len(recv_pkt), repr(recv_pkt)
-            if recv_pkt and ord(recv_pkt[0]) == recv_pkt_id:
-                return recv_pkt
+            if recv_pkt:
+                pkt_id = ord(recv_pkt[0])
+                if pkt_id == recv_pkt_id:
+                    return recv_pkt
+                self.logger.debug('Received unanticipated packet: 0x%s', pkt_id)
             sleep(DELAY)
             attempts -= 1
 
@@ -120,10 +122,12 @@ class VoiZApp():
         if not self.mac.verifyPacketHMAC(rh2, rhello_pkt[:45], rhellohmac):
             self.logger.error('HMAC failed in responders HELLO packet')
             return False
+        self.logger.debug('Valid HMAC in HELLO packet')
         # verify hash chain components
         if not self.mac.verifyHash(rh2, rh3):
             self.logger.error('Hash chain verification failed: sha256(h2) != h3')
             return False
+        self.logger.debug('Hash chain verification success: sha256(h2) == h3')
 
         dhpart2_pkts = self.pkt_factory.gen_pkts_dhpart2()
         # prepare dhpart2 packets
@@ -162,13 +166,14 @@ class VoiZApp():
         if not self.mac.verifyPacketHMAC(rconfirmmackey, rh0_enc, rconfirm_mac):
             self.logger.error('HMAC failed in responders CONFIRM1 packet')
             return False
+        self.logger.debug('Valid HMAC in CONFIRM1 packet')
         # decrypt rh0
         rh0 = self.mac.decrypt(rh0_enc)
-        self.logger.debug('Responders h0: 0x%s', rh0.encode('hex'))
         # verify DHPART1 packet mac
         if not self.mac.verifyHash(rh0, rh1):
             self.logger.error('Hash chain verification failed: sha256(h0) != h1')
             return False
+        self.logger.debug('Hash chain verification success: sha256(h0) == h1')
 
         # prepare dhconfirm2 packet
         iconfirm2_pkt = self.pkt_factory.gen_pkt_confirm2()
@@ -212,11 +217,12 @@ class VoiZApp():
         if not self.mac.verifyPacketHMAC(ih2, ihello_pkt[:45], ihellohmac):
             self.logger.error('HMAC failed in initiators HELLO packet')
             return False
+        self.logger.debug('Valid HMAC in HELLO packet')
         # verify hash chain components
         if not self.mac.verifyHash(ih2, ih3):
             self.logger.error('Hash chain verification failed: sha256(h2) != h3')
             return False
-        self.logger.debug('Valid PKT_COMMIT packet')
+        self.logger.debug('Hash chain verification success: sha256(h2) == h3')
         self.mac.setCounterSuffix(icounter_suffix)
 
         # prepare dhpart1 packets
@@ -264,10 +270,12 @@ class VoiZApp():
         if not self.mac.verifyPacketHMAC(ih1, icommit_pkt[:53], icommithmac):
             self.logger.error('HMAC failed in initiators COMMIT packet')
             return False
+        self.logger.debug('Valid HMAC in COMMIT packet')
         # verify hash chain components
         if not self.mac.verifyHash(ih1, ih2):
             self.logger.error('Hash chain verification failed: sha256(h1) != h2')
             return False
+        self.logger.debug('Hash chain verification success: sha256(h1) == h2')
 
         # set parameters
         self.mac.setPartnerPublicKey(pvi)
@@ -306,13 +314,14 @@ class VoiZApp():
         if not self.mac.verifyPacketHMAC(iconfirmmackey, ih0_enc, iconfirm_mac):
             self.logger.error('HMAC failed in initiators CONFIRM2 packet')
             return False
+        self.logger.debug('Valid HMAC in CONFIRM2 packet')
         # decrypt ih0
         ih0 = self.mac.decrypt(ih0_enc)
-        self.logger.debug('Initiators h0: 0x%s', ih0.encode('hex'))
         # verify DHPART2 packet mac
         if not self.mac.verifyHash(ih0, ih1):
             self.logger.error('Hash chain verification failed: sha256(h0) != h1')
             return False
+        self.logger.debug('Hash chain verification success: sha256(h0) == h1')
 
         return True
 

@@ -109,6 +109,7 @@ class VoiZMAC():
         self.total_hash = self.getHash(packets)
 
     def computeSecret(self, zidi, zidr):
+        self.logger.debug('Computing shared secret s0...')
         dhresult = hex(pow(self.dhpub2, self.dhpriv, DH_MODULUS)).rstrip('L')[2:]
         self.s0 = self.getHash(
             dhresult +
@@ -128,6 +129,7 @@ class VoiZMAC():
         return SHA256.new(payload).digest()
 
     def startEncryption(self, enckey, deckey):
+        self.logger.debug('Instantiating symmetric ciphers...')
         self.enckey = enckey
         self.deckey = deckey
         # encryption
@@ -147,6 +149,7 @@ class VoiZMAC():
     def decrypt(self, payload, ctr=None):
         ctr = ctr or self.decctr
         if ctr != self.decctr:
+            self.logger.debug('Reinstantiating decryption cipher due to out-of-sync counter...')
             decctro = Counter.new(64, suffix=self.counter_suffix, initial_value=ctr)
             self.deccipher = AES.new(self.deckey, AES.MODE_CTR, counter=decctro)
             self.decctr = ctr
