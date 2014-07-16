@@ -29,9 +29,11 @@ class VoiZApp():
 
     def send(self, send_pkt, count=1):
         send_pkt = send_pkt.ljust(PAYLOAD_LEN, ZERO)
+        self.tx.send_pkt(send_pkt)
+        count -= 1
         while count > 0:
-            self.tx.send_pkt(send_pkt)
             sleep(DELAY)
+            self.tx.send_pkt(send_pkt)
             count -= 1
 
     def _send_until_pkt(self, send_pkts, recv_pkt_id, wait_forever=False):
