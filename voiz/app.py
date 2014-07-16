@@ -358,7 +358,7 @@ class VoiZApp():
                     if c2sample:
                         src_samples += c2sample
                         if len(src_samples) >= 63:
-                            self.send(self.pkt_factory.gen_pkt_codec2(src_samples[:63]))
+                            self.send(self.pkt_factory.gen_pkt_codec2(src_samples[:63]), 2)
                             src_samples = src_samples[63:]
                     # check for received audio
                     recv_pkt = self.rx.recv_pkt()
