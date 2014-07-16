@@ -12,6 +12,7 @@ from .protocol import *
 ZERO = '\x00'
 DELAY = 0.2
 TIMEOUT = 15.0
+BACKOFF = range(5)
 
 class VoiZApp():
 
@@ -24,6 +25,8 @@ class VoiZApp():
         # instantiate packet factory
         self.pkt_factory = VoiZPacketFactory(self.cache, self.mac)
 
+        self.send_until_pkt = self._send_until_pkt_backoff if conf.backoff else self._send_until_pkt
+
     def send(self, send_pkt, count=1):
         send_pkt = send_pkt.ljust(PAYLOAD_LEN, ZERO)
         while count > 0:
@@ -31,7 +34,7 @@ class VoiZApp():
             sleep(DELAY)
             count -= 1
 
-    def send_until_pkt(self, send_pkts, recv_pkt_id, wait_forever=False):
+    def _send_until_pkt(self, send_pkts, recv_pkt_id, wait_forever=False):
         send_pkts = [pkt.ljust(PAYLOAD_LEN, ZERO) for pkt in send_pkts]
         attempts = len(send_pkts) * TIMEOUT / DELAY
         while wait_forever or attempts > 0:
@@ -45,6 +48,25 @@ class VoiZApp():
                         return recv_pkt
                     self.logger.debug('Received unanticipated packet: 0x%s', pkt_id)
                 sleep(DELAY)
+                attempts -= 1
+
+    def _send_until_pkt_backoff(self, send_pkts, recv_pkt_id, wait_forever=False):
+        send_pkts = [pkt.ljust(PAYLOAD_LEN, ZERO) for pkt in send_pkts]
+        attempts = len(send_pkts) * TIMEOUT / DELAY
+        while wait_forever or attempts > 0:
+            for send_pkt in send_pkts:
+                self.tx.send_pkt(send_pkt)
+                self.tx.send_pkt(send_pkt)
+                self.tx.send_pkt(send_pkt)
+                for i in BACKOFF:
+                    # look for received packet
+                    recv_pkt = self.rx.recv_pkt()
+                    if recv_pkt:
+                        pkt_id = ord(recv_pkt[0])
+                        if pkt_id == recv_pkt_id:
+                            return recv_pkt
+                        self.logger.debug('Received unanticipated packet: 0x%s', pkt_id)
+                    sleep(DELAY)
                 attempts -= 1
 
     def wait_until_pkt(self, recv_pkt_id, wait_forever=False):

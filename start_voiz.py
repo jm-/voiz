@@ -87,7 +87,12 @@ def loadConfig():
     )
     parser.add_argument(
         '--listen',
-        help='[debug] listen to received audio',
+        help='[debug] listen to received audio (uses dev hw:0,0)',
+        action='store_true'
+    )
+    parser.add_argument(
+        '--backoff',
+        help='wait between transmissions',
         action='store_true'
     )
     return parser.parse_args()

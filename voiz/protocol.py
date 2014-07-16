@@ -54,7 +54,7 @@ class VoiZPacketFactory():
         return pkt[1:33], pkt[33:45], pkt[45:53], pkt[53:61]
 
     def gen_pkt_payload_dhpart1(self):
-        return self.mac.h1 + ('\x00' * 16) + self.mac.packedPublicKey()
+        return self.mac.h1 + ('\x00' * 8 * 2) + self.mac.packedPublicKey()
 
     def gen_pkts_dhpart1(self):
         payload = self.gen_pkt_payload_dhpart1()
