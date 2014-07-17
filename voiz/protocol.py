@@ -26,6 +26,9 @@ ULONG_UNPACK = Struct('!Q').unpack
 
 PKT_CODEC2_CHR = chr(PKT_CODEC2)
 
+class InvalidHMACException(Exception):
+    pass
+
 class VoiZPacketFactory():
 
     def __init__(self, cache, mac):
@@ -99,8 +102,15 @@ class VoiZPacketFactory():
         return pkt[1:9], pkt[9:41]
 
     def gen_pkt_codec2(self, payload):
-        return PKT_CODEC2_CHR + ULONG_PACK(self.mac.encctr) + self.mac.encrypt(PKT_CODEC2_CHR + payload)
+        packed_encctr = ULONG_PACK(self.mac.encctr)
+        pkt = PKT_CODEC2_CHR + packed_encctr + self.mac.encrypt(PKT_CODEC2_CHR + payload)
+        mackey = self.mac.hmac_s0(packed_encctr)
+        return pkt + self.mac.getHMAC(mackey, pkt)[:8]
 
     def dct_pkt_codec2(self, pkt):
-        ctr = ULONG_UNPACK(pkt[1:9])[0]
-        return self.mac.decrypt(pkt[9:73], ctr)[1:64]
+        packed_ctr = pkt[1:9]
+        mackey = self.mac.hmac_s0(packed_ctr)
+        if not self.mac.verifyPacketHMAC(mackey, pkt[:73], pkt[73:81]):
+            raise InvalidHMACException('Bad HMAC in codec2 data packet')
+        ctr = ULONG_UNPACK(packed_ctr)[0]
+        return self.mac.decrypt(pkt[9:73], ctr)[1:64], pkt[73:81]

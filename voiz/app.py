@@ -6,7 +6,7 @@ from time import sleep, time as now
 from .c2 import Codec2Source, Codec2Sink
 from .tx import tx_block, PAYLOAD_LEN
 from .rx import rx_block
-from .crypto import VoiZCache, VoiZMAC
+from .crypto import VoiZCache, VoiZMAC, InvalidHMACException
 from .protocol import *
 
 ZERO = '\x00'
@@ -363,7 +363,11 @@ class VoiZApp():
                     # check for received audio
                     recv_pkt = self.rx.recv_pkt()
                     if recv_pkt and recv_pkt[0] == PKT_CODEC2_CHR:
-                        c2data = self.pkt_factory.dct_pkt_codec2(recv_pkt)
+                        try:
+                            c2data = self.pkt_factory.dct_pkt_codec2(recv_pkt)
+                        except InvalidHMACException:
+                            self.logger.error('Bad HMAC in codec2 data packet')
+                            continue
                         voice_sink.write(c2data)
 
     def run(self):
