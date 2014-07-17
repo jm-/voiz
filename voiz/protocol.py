@@ -3,6 +3,8 @@
 from logging import getLogger
 from struct import Struct
 
+from .crypto import InvalidHMACException
+
 PKT_HELLO       = 0x00
 PKT_HELLOACK    = 0x01  # unused
 PKT_COMMIT      = 0x02
@@ -25,9 +27,6 @@ ULONG_PACK = Struct('!Q').pack
 ULONG_UNPACK = Struct('!Q').unpack
 
 PKT_CODEC2_CHR = chr(PKT_CODEC2)
-
-class InvalidHMACException(Exception):
-    pass
 
 class VoiZPacketFactory():
 

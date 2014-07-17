@@ -29,6 +29,9 @@ DH_MODULUS = int('''
 '''.replace(' ', '').replace('\n', '').lower(), 16)
 DH_GENERATOR = 2
 
+class InvalidHMACException(Exception):
+    pass
+
 class VoiZCache():
 
     def __init__(self, path=VOIZ_CACHE_PATH):
