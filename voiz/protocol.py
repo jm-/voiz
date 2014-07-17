@@ -112,4 +112,4 @@ class VoiZPacketFactory():
         if not self.mac.verifyPacketHMAC(mackey, pkt[:73], pkt[73:81]):
             raise InvalidHMACException('Bad HMAC in codec2 data packet')
         ctr = ULONG_UNPACK(packed_ctr)[0]
-        return self.mac.decrypt(pkt[9:73], ctr)[1:64], pkt[73:81]
+        return self.mac.decrypt(pkt[9:73], ctr)[1:64]
