@@ -365,10 +365,12 @@ class VoiZApp():
                     if recv_pkt and recv_pkt[0] == PKT_CODEC2_CHR:
                         try:
                             c2data = self.pkt_factory.dct_pkt_codec2(recv_pkt)
+                            voice_sink.write(c2data)
                         except InvalidHMACException:
                             self.logger.error('Bad HMAC in codec2 data packet')
-                            continue
-                        voice_sink.write(c2data)
+                    #else:
+                    #    print 'writing silence...'
+                    #    voice_sink.write_silence()
 
     def run(self):
         # setup tx and rx classes
