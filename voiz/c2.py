@@ -62,7 +62,7 @@ class Codec2Source():
             try:
                 d = proc_read()
                 self.r += len(d)
-                print 'mic:', self.w / (now() - self.t0)
+                #print 'mic:', self.w / (now() - self.t0)
                 yield d
             except IOError:
                 yield None
@@ -110,8 +110,7 @@ class Codec2Sink():
             frames = self.proc.stdout.read()
             self.out.write(frames)
             self.r += len(frames)
-
-            print 'out:', self.r / (now() - self.t0)
+            #print 'out:', self.r / (now() - self.t0)
         except IOError:
             pass
 

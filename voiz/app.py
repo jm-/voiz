@@ -350,6 +350,8 @@ class VoiZApp():
         return True
 
     def relayAudio(self):
+        t0 = now()
+        d = 0
         with Codec2Source(self.conf.micdev) as voice_src:
             with Codec2Sink(self.conf.outdev) as voice_sink:
                 src_samples = ''
@@ -358,11 +360,13 @@ class VoiZApp():
                     if c2sample:
                         src_samples += c2sample
                         if len(src_samples) >= 63:
-                            self.send(self.pkt_factory.gen_pkt_codec2(src_samples[:63]), 2)
+                            self.send(self.pkt_factory.gen_pkt_codec2(src_samples[:63]))
                             src_samples = src_samples[63:]
                     # check for received audio
                     recv_pkt = self.rx.recv_pkt()
                     if recv_pkt and recv_pkt[0] == PKT_CODEC2_CHR:
+                        d += len(recv_pkt)
+                        print d / (now() - t0)
                         try:
                             c2data = self.pkt_factory.dct_pkt_codec2(recv_pkt)
                             voice_sink.write(c2data)
